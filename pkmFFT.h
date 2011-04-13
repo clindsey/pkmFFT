@@ -33,7 +33,7 @@
  *      http://developer.apple.com/library/ios/#documentation/Accelerate/Reference/vDSPRef/Reference/reference.html
  *      http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/vDSP_Programming_Guide/SampleCode/SampleCode.html
  *      http://stackoverflow.com/questions/3398753/using-the-apple-fft-and-accelerate-framework
- *      http://stackoverflow.com/questions/4513306/setup-for-apples-accelerate-fft-for-the-iphone
+ *      http://stackoverflow.com/questions/1964955/audio-file-fft-in-an-os-x-environment
  *     
  *
  *  This code is a very simple interface for Accelerate's fft/ifft code.
