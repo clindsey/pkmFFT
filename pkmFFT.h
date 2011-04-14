@@ -62,7 +62,7 @@ class pkmFFT
 {
 public:
 
-	pkmFFT(int size = 4096, int window_size = 4096)
+	pkmFFT(int size = 4096)
 	{
 		fftSize = size;					// sample size
 		fftSizeOver2 = fftSize/2;		
@@ -74,10 +74,10 @@ public:
 		split_data.realp = (float *) malloc(fftSizeOver2 * sizeof(float));
 		split_data.imagp = (float *) malloc(fftSizeOver2 * sizeof(float));
 		
-		windowSize = window_size;
+		windowSize = size;
 		window = (float *) malloc(sizeof(float) * windowSize);
 		memset(window, 0, sizeof(float) * windowSize);
-		vDSP_hann_window(window, window_size, vDSP_HANN_DENORM);
+		vDSP_hann_window(window, windowSize, vDSP_HANN_DENORM);
 		
 		scale = 1.0f/(float)(4.0f*fftSize);
 		
