@@ -52,7 +52,7 @@
  *  fft = new pkmFFT(4096);
  *  fft.forward(0, sample_data, allocated_magnitude_buffer, allocated_phase_buffer);
  *  fft.inverse(0, sample_data, allocated_magnitude_buffer, allocated_phase_buffer);
- *
+ *  delete fft;
  *
  */
 
@@ -83,7 +83,9 @@ public:
 		
 		// allocate the fft object once
 		fftSetup = vDSP_create_fftsetup(log2n, FFT_RADIX2);
-		if (fftSetup == NULL) {
+		if (fftSetup == NULL || in_real == NULL || out_real == NULL || 
+			split_data.realp == NULL || split_data.imagp == NULL || window == NULL) 
+		{
 			printf("\nFFT_Setup failed to allocate enough memory.\n");
 		}
 	}
@@ -93,6 +95,7 @@ public:
 		free(out_real);
 		free(split_data.realp);
 		free(split_data.imagp);
+		free(window);
 		
 		vDSP_destroy_fftsetup(fftSetup);
 	}

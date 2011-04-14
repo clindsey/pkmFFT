@@ -41,6 +41,7 @@
  *  stft = new pkmSTFT(512);
  *  stft.STFT(sample_data, buffer_size, magnitude_matrix, phase_matrix);
  *  fft.ISTFT(sample_data, buffer_size, magnitude_matrix, phase_matrix);
+ *  delete stft;
  *
  */
 
@@ -62,6 +63,10 @@ public:
 		bufferSize = 0;
 		
 		initializeFFTParameters(fftSize, windowSize, hopSize);
+	}
+	~pkmSTFT()
+	{
+		free(FFT);
 	}
 	
 	void initializeFFTParameters(size_t _fftSize, size_t _windowSize, size_t _hopSize)
