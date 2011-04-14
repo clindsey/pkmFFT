@@ -1,0 +1,66 @@
+ *  Real FFT wraper for Apple's Accelerate Framework
+ *  and STFT implementation making use of Apple's Accelerate Framework (pkmFFT)
+ *
+ *  Created by Parag K. Mital - http://pkmital.com 
+ *  Contact: parag@pkmital.com
+ *
+ *  Copyright 2011 Parag K. Mital. All rights reserved.
+ * 
+ *	Permission is hereby granted, free of charge, to any person
+ *	obtaining a copy of this software and associated documentation
+ *	files (the "Software"), to deal in the Software without
+ *	restriction, including without limitation the rights to use,
+ *	copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *	copies of the Software, and to permit persons to whom the
+ *	Software is furnished to do so, subject to the following
+ *	conditions:
+ *	
+ *	The above copyright notice and this permission notice shall be
+ *	included in all copies or substantial portions of the Software.
+ *
+ *	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,	
+ *	EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *	OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *	NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *	HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *	WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *	OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *  Additional resources: 
+ *      http://developer.apple.com/library/ios/#documentation/Accelerate/Reference/vDSPRef/Reference/reference.html
+ *      http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/vDSP_Programming_Guide/SampleCode/SampleCode.html
+ *      http://stackoverflow.com/questions/3398753/using-the-apple-fft-and-accelerate-framework
+ *      http://stackoverflow.com/questions/1964955/audio-file-fft-in-an-os-x-environment
+ *     
+ *
+ *  This code is a very simple interface for Accelerate's fft/ifft code.
+ *  It was built out of hacking Maximilian (Mick Grierson and Chris Kiefer) and
+ *  the above mentioned resources for performing a windowed FFT which could
+ *  be used underneath of an STFT implementation
+ *
+ *  FFT Usage:
+ *
+ *  // be sure to either use malloc or __attribute__ ((aligned (16))
+ *  float *sample_data = (float *) malloc (sizeof(float) * 4096);
+ *  float *allocated_magnitude_buffer =  (float *) malloc (sizeof(float) * 2048);
+ *  float *allocated_phase_buffer =  (float *) malloc (sizeof(float) * 2048);
+ *
+ *  pkmFFT *fft;
+ *  fft = new pkmFFT(4096);
+ *  fft.forward(0, sample_data, allocated_magnitude_buffer, allocated_phase_buffer);
+ *  fft.inverse(0, sample_data, allocated_magnitude_buffer, allocated_phase_buffer);
+ *  delete fft;
+ *
+ *
+ *  STFT Usage:
+ *  // be sure to either use malloc or __attribute__ ((aligned (16))
+ *  size_t buffer_size = 4096;
+ *  float *sample_data = (float *) malloc (sizeof(float) * buffer_size);
+ *  pkm::Mat magnitude_matrix, phase_matrix;
+ *
+ *  pkmSTFT *stft;
+ *  stft = new pkmSTFT(512);
+ *  stft.STFT(sample_data, buffer_size, magnitude_matrix, phase_matrix);
+ *  fft.ISTFT(sample_data, buffer_size, magnitude_matrix, phase_matrix);
+ *  delete stft;
