@@ -57,6 +57,10 @@
  */
 
 #include <Accelerate/Accelerate.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 
 class pkmFFT
 {
@@ -77,7 +81,7 @@ public:
 		windowSize = size;
 		window = (float *) malloc(sizeof(float) * windowSize);
 		memset(window, 0, sizeof(float) * windowSize);
-		vDSP_hann_window(window, windowSize, vDSP_HANN_DENORM);
+		vDSP_hann_window(window, windowSize, vDSP_HANN_NORM);
 		
 		scale = 1.0f/(float)(4.0f*fftSize);
 		
@@ -154,14 +158,17 @@ public:
 		}
 	}
 	
-private:
 	
-	size_t				fftSize, 
+	int					fftSize, 
 						fftSizeOver2,
 						log2n,
 						log2nOver2,
 						windowSize,
-						i;					
+						i;	
+	
+private:
+	
+				
 	
 	float				*in_real, 
 						*out_real,

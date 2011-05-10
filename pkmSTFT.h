@@ -33,7 +33,7 @@
  *  Usage:
  *
  *  // be sure to either use malloc or __attribute__ ((aligned (16))
- *  size_t buffer_size = 4096;
+ *  int buffer_size = 4096;
  *  float *sample_data = (float *) malloc (sizeof(float) * buffer_size);
  *  pkm::Mat magnitude_matrix, phase_matrix;
  *
@@ -53,7 +53,7 @@ class pkmSTFT
 {
 public:
 
-	pkmSTFT(size_t size)
+	pkmSTFT(int size)
 	{
 		fftSize = size;
 		numFFTs = 0;
@@ -69,7 +69,7 @@ public:
 		free(FFT);
 	}
 	
-	void initializeFFTParameters(size_t _fftSize, size_t _windowSize, size_t _hopSize)
+	void initializeFFTParameters(int _fftSize, int _windowSize, int _hopSize)
 	{
 		fftSize = _fftSize;
 		hopSize = _hopSize;
@@ -79,7 +79,7 @@ public:
 		FFT = new pkmFFT(fftSize);
 	}
 	
-	void STFT(float *buf, size_t bufSize, pkm::Mat &M_magnitudes, pkm::Mat &M_phases)
+	void STFT(float *buf, int bufSize, pkm::Mat &M_magnitudes, pkm::Mat &M_phases)
 	{	
 		// pad input buffer
 		int padding = ceilf((float)bufSize/(float)fftSize) * fftSize - bufSize;
@@ -101,13 +101,12 @@ public:
 		numWindows = (padBufferSize - fftSize)/hopSize + 1;
 		
 		if (M_magnitudes.rows != numWindows && M_magnitudes.cols != fftBins) {
-			printf("Allocating %d bins x %d windows matrix for STFT\n", fftBins, numWindows);
 			M_magnitudes.reset(numWindows, fftBins, true);
 			M_phases.reset(numWindows, fftBins, true);
 		}
 		
 		// stft
-		for (size_t i = 0; i < numWindows; i++) {
+		for (int i = 0; i < numWindows; i++) {
 			
 			// get current col of freq mat
 			float *magnitudes = M_magnitudes.row(i);
@@ -125,7 +124,7 @@ public:
 	}
 	
 	
-	void ISTFT(float *buf, size_t bufSize, pkm::Mat &M_magnitudes, pkm::Mat &M_phases)
+	void ISTFT(float *buf, int bufSize, pkm::Mat &M_magnitudes, pkm::Mat &M_phases)
 	{
 		int padding = ceilf((float)bufSize/(float)fftSize) * fftSize - bufSize;
 		float *padBuf;
@@ -142,7 +141,7 @@ public:
 		
 		pkm::Mat M_istft(padBufferSize, 1, padBuf, false);
 		
-		for(size_t i = 0; i < numWindows; i++)
+		for(int i = 0; i < numWindows; i++)
 		{
 			float *buffer = padBuf + i*hopSize;
 			float *magnitudes = M_magnitudes.row(i);
@@ -158,11 +157,12 @@ public:
 		}
 	}
 	
-private:
-	
 	pkmFFT				*FFT;
 	
-	size_t				sampleRate,
+private:
+	
+	
+	int				sampleRate,
 						numFFTs,
 						fftSize,
 						fftBins,

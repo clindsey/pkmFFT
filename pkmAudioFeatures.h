@@ -73,6 +73,9 @@ public:
 		
 		free(DCT);
 		
+		free(cqtVector);
+		free(dctVector);
+		
 		free(fft);
 		free(fft_magnitudes);
 		free(fft_phases);
@@ -103,16 +106,17 @@ public:
 		
 		// Sparse matrix coding indices
 		cqStart = (int *)malloc(sizeof(int)*cqtN);					
-		cqStop = (int *)malloc(sizeof(int)*cqtN);			
-		
-		cqtVector = (float *)malloc(sizeof(float)*cqtN);			
+		cqStop = (int *)malloc(sizeof(int)*cqtN);					
 		
 		// Full spectrum DCT matrix
 		dctN = cqtN; 
 		DCT = (float *)malloc(sizeof(float)*cqtN*dctN);
 		
+		// Our transforms
+		cqtVector = (float *)malloc(sizeof(float)*cqtN);	
 		dctVector = (float *)malloc(sizeof(float)*dctN);	
 		
+		// initialize maps
 		createLogFreqMap();
 		createDCT();
 	}
@@ -213,11 +217,11 @@ public:
 		fft->forward(0, input, fft_magnitudes, fft_phases);
 		
 		// sparse matrix product of CQT * FFT
-		/*
 		int a = 0,b = 0;
 		float *ptr1 = 0, *ptr2 = 0, *ptr3 = 0;
 		float* mfccPtr = 0;
 		
+		/*
 		for( a = 0; a < cqtN ; a++ )
 		{
 			ptr1 = cqtVector + a; // constant-Q transform vector
@@ -262,7 +266,7 @@ public:
 		 
 	}
 	
-	int getNumCoefficients()
+	inline int getNumCoefficients()
 	{
 		return dctN;
 	}
@@ -278,13 +282,13 @@ private:
 	float			*DCT,									// coefficients
 					*CQT;
 	
-	float			*cqtVector,
+	float			*cqtVector,								// transforms
 					*dctVector;
 	
 	int				*cqStart,								// sparse matrix indices
 					*cqStop;
 	
-	float			loEdge, 
+	float			loEdge,									// tranform range
 					hiEdge;
 	
 	float			fratio;
@@ -304,10 +308,3 @@ private:
 	
 };
 
-static float meanMagnitude(float *buf, int size)
-{
-	float mean;
-	vDSP_svemg(buf, 1, &mean, size);
-	mean /= size;
-	return mean;
-}
