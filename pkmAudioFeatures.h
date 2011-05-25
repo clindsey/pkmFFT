@@ -79,6 +79,8 @@ public:
 		free(fft);
 		free(fft_magnitudes);
 		free(fft_phases);
+		
+		free(foutput);
 	}
 	
 	void setup()
@@ -95,7 +97,7 @@ public:
 		hiEdge = 8000.0;
 		
 		// Constant-Q bandwidth
-		fratio = pow(2.0, 1.0/bpoN);				
+		fratio = pow(2.0, 1.0/12.0);				
 		cqtN = (int) floor(log(hiEdge/loEdge)/log(fratio));
 		
 		if(cqtN<1)
@@ -115,6 +117,8 @@ public:
 		// Our transforms
 		cqtVector = (float *)malloc(sizeof(float)*cqtN);	
 		dctVector = (float *)malloc(sizeof(float)*dctN);	
+		
+		foutput = (float *)malloc(sizeof(float) * dctN);
 		
 		// initialize maps
 		createLogFreqMap();
@@ -210,7 +214,7 @@ public:
 			DCT[ j ] *= sqrtf(2.0) / 2.0;
 	}
 	
-	void computeMFCC(float *input, float* output)
+	void computeMFCC(float *input, float*& output)
 	{
 		
 		// should window input buffer before FFT
@@ -237,12 +241,11 @@ public:
 		
 		vDSP_mmul(fft_magnitudes, 1, CQT, 1, cqtVector, 1, 1, cqtN, fftOutN);
 
-		// LFCC ( in-place )
+		// LFCC 
 		a = cqtN;
 		ptr1 = cqtVector;
 		while( a-- ){
-			*ptr1 = log10f( *ptr1 );
-			ptr1++;
+			*ptr1++ = log10f( *ptr1 );
 		}
 		
 		/*
@@ -264,6 +267,30 @@ public:
 		//float n = (float) dctN;
 		//vDSP_vsdiv(output, 1, &n, output, 1, dctN);
 		 
+	}
+	
+	void computeMFCC(float *input, double*& output)
+	{
+		
+		// should window input buffer before FFT
+		fft->forward(0, input, fft_magnitudes, fft_phases);
+		
+		// sparse matrix product of CQT * FFT
+		int a = 0,b = 0;
+		float *ptr1 = 0, *ptr2 = 0, *ptr3 = 0;
+		float* mfccPtr = 0;
+		
+		vDSP_mmul(fft_magnitudes, 1, CQT, 1, cqtVector, 1, 1, cqtN, fftOutN);
+		
+		// LFCC 
+		a = cqtN;
+		ptr1 = cqtVector;
+		while( a-- ){
+			*ptr1++ = log10f( *ptr1 );
+		}
+		
+		vDSP_mmul(cqtVector, 1, DCT, 1, foutput, 1, 1, dctN, cqtN);
+		vDSP_vspdp(foutput, 1, output, 1, dctN);
 	}
 	
 	inline int getNumCoefficients()
@@ -297,6 +324,8 @@ private:
 	
 	float			*fft_magnitudes,
 					*fft_phases;
+
+	float			*foutput;
 	
 	int				bpoN,
 					cqtN,
