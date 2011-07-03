@@ -44,8 +44,9 @@
  *  delete stft;
  *
  */
+#pragma once
 
-
+#include <Accelerate/Accelerate.h>
 #include "pkmFFT.h"
 #include "pkmMatrix.h"
 
@@ -83,15 +84,20 @@ public:
 	{	
 		// pad input buffer
 		int padding = ceilf((float)bufSize/(float)fftSize) * fftSize - bufSize;
+		int shift = padding / 2;
 		float *padBuf;
 		if (padding) {
 			printf("Padding %d sample buffer with %d samples\n", bufSize, padding);
 			padBufferSize = bufSize + padding;
 			padBuf = (float *)malloc(sizeof(float)*padBufferSize);
 			// set padding to 0
-			memset(&(padBuf[bufSize]), 0, sizeof(float)*padding);
+			//memset(&(padBuf[bufSize]), 0, sizeof(float)*padding);
+			vDSP_vclr(padBuf + bufSize, 1, padding);
 			// copy original buffer into padded one
-			memcpy(padBuf, buf, sizeof(float)*bufSize);	}
+			//memcpy(padBuf, buf, sizeof(float)*bufSize);	
+		
+			cblas_scopy(bufSize, buf, 1, padBuf + shift, 1);
+		}
 		else {
 			padBuf = buf;
 			padBufferSize = bufSize;
@@ -127,12 +133,14 @@ public:
 	void ISTFT(float *buf, int bufSize, pkm::Mat &M_magnitudes, pkm::Mat &M_phases)
 	{
 		int padding = ceilf((float)bufSize/(float)fftSize) * fftSize - bufSize;
+		int shift = padding / 2;
 		float *padBuf;
 		if (padding) 
 		{
 			printf("Padding %d sample buffer with %d samples\n", bufSize, padding);
 			padBufferSize = bufSize + padding;
-			padBuf = (float *)calloc(padBufferSize, sizeof(float));
+			padBuf = (float *)malloc(padBufferSize*sizeof(float));
+			vDSP_vclr(padBuf, 1, padBufferSize);
 		}
 		else {
 			padBuf = buf;
@@ -150,7 +158,8 @@ public:
 			FFT->inverse(0, buffer, magnitudes, phases);
 		}
 
-		memcpy(buf, padBuf, sizeof(float)*bufSize);
+		//memcpy(buf, padBuf, sizeof(float)*bufSize);
+		cblas_scopy(bufSize, padBuf + shift, 1, buf, 1);
 		// release padded buffer
 		if (padding) {
 			free(padBuf);

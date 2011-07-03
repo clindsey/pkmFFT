@@ -17,6 +17,10 @@ using namespace std;
 #include "ANN.h"						// kd-tree
 #include <Accelerate/Accelerate.h>
 
+// include removal of sound from database and freeing memory
+// segmentation based on average segment's distance to database
+// write segments to extaf, and load from disk using ptr
+
 class pkmAudioFeatureDatabase
 {
 public:
@@ -28,7 +32,7 @@ public:
 		bBuiltIndex = false;
 		analyzer = new pkmAudioFileAnalyzer(sampleRate, fftN);
 		
-		k				= 3;								// number of nearest neighbors
+		k				= 1;								// number of nearest neighbors
 		nnIdx			= new ANNidx[k];					// allocate near neighbor indices
 		dists			= new ANNdist[k];					// allocate near neighbor dists	
 		
@@ -44,15 +48,25 @@ public:
 		}
 	}
 	
-	void addSound(float *&buf, int size)
+	bool bShouldSegment(float *&buf, int size)
 	{
-		float					*buf_copy = (float *)malloc(sizeof(float) * size);
+		return true;
+	}
+
+	
+	void addSound(float *&buf_copy, int size)
+	{
+		
 		vector<double * >		feature_matrix;
 		vector<pkmAudioFile>	sound_lut;
 		int						num_frames, num_features;
 		
 		// store buffer
+		/*
+		float					*buf_copy = (float *)malloc(sizeof(float) * size);
 		cblas_scopy(size, buf, 1, buf_copy, 1);
+		*/
+		
 		
 		// get the features for this buffer for every frame
 		analyzer->analyzeFile(buf_copy, 
@@ -62,15 +76,17 @@ public:
 							  num_frames,					// total number of frames for this audio file
 							  num_features);				// number of coefficients
 		
+		/*
 		// concatenate features to our database
-		//feature_database.insert(feature_database.end(),		// append it to the end of the feature database
-		//						feature_matrix.begin(), 
-		//						feature_matrix.end());
+		feature_database.insert(feature_database.end(),		// append it to the end of the feature database
+								feature_matrix.begin(), 
+								feature_matrix.end());
 		
 		// and the pointer to the audio frames
-		//audio_database.insert(audio_database.end(),			// and the audio database
-		//					  sound_lut.begin(), 
-		//					  sound_lut.end());
+		audio_database.insert(audio_database.end(),			// and the audio database
+							  sound_lut.begin(), 
+							  sound_lut.end());
+		*/
 		
 		for (int i = 0; i < feature_matrix.size(); i++) {
 			feature_database.push_back(feature_matrix[i]);
@@ -95,9 +111,10 @@ public:
 		{
 			delete kdTree;
 			bBuiltIndex = false;
+			annDeallocPts(positions);
 		}
 
-		ANNpointArray positions = annAllocPts(pts, dim);
+		positions = annAllocPts(pts, dim);
 		for (int i = 0; i < pts; i++) 
 		{
 			for (int j = 0; j < dim; j++)
@@ -111,7 +128,7 @@ public:
 								pts,						// number of points
 								dim);						// dimension of space
 		bBuiltIndex = true;
-		//annDeallocPts(positions);
+		
 	}
 	
 	
@@ -146,10 +163,18 @@ public:
 						   k,						// number of near neighbors
 						   nnIdx,					// nearest neighbors (returned)
 						   dists,					// distance (returned)
-						   0.1);					// error bound
+						   0.0000001);				// error bound
 		
 		
-		//float sumDists = (dists[0] + dists[1] + dists[2]);
+		float sumDists = 0;
+		int i = 0;
+		while (i < k) {
+			sumDists += dists[i];
+			i++;
+		}
+		
+		
+		
 		//printf("sum dist: %f\n", sumDists);
 		//if (isnan(sumDists)) {
 		//	return nearestAudioFrames;
@@ -157,13 +182,24 @@ public:
 		
 		for (int i = 0; i < k; i++) {
 			//printf("i-th idx: %d, dist: %f\n", nnIdx[i], dists[i]);
-			nearestAudioFrames.push_back(audio_database[nnIdx[i]]);
+			pkmAudioFile p = audio_database[nnIdx[i]];
+			if (k == 1) {
+				p.weight = 1.0;
+			}
+			else
+			{
+				p.weight =  1.0 - (dists[i] / sumDists);
+			}
+			printf("i-th idx: %d, dist: %f, norm_dist: %f\n", nnIdx[i], dists[i], p.weight);
+			
+			//nearestAudioFrames.push_back(audio_database[nnIdx[i]]);
+			nearestAudioFrames.push_back(p);
 		}
 
 		return nearestAudioFrames;
 	}
 	
-	int size()
+	inline int size()
 	{
 		return unique_buffers.size();
 	}
@@ -177,6 +213,8 @@ public:
 	vector<float *>				unique_buffers;
 	int							numFeatures,
 								numFrames;
+	
+	ANNpointArray				positions;
 	
 	// For kNN
 	ANNkd_tree					*kdTree;		// distances to nearest HRTFs

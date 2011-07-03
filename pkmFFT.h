@@ -55,6 +55,7 @@
  *  delete fft;
  *
  */
+#pragma once
 
 #include <Accelerate/Accelerate.h>
 #include <stdlib.h>
@@ -120,6 +121,7 @@ public:
 		
 		split_data.imagp[0] = 0.0;
 		
+		/*
 		for (i = 0; i < fftSizeOver2; i++) 
 		{
 			//compute power 
@@ -129,7 +131,12 @@ public:
 			//compute magnitude and phase
 			magnitude[i] = sqrtf(power);
 			phase[i] = atan2f(split_data.imagp[i], split_data.realp[i]);
-		}
+		}*/
+		
+		vDSP_ztoc(&split_data, 1, (COMPLEX *) in_real, 2, fftSizeOver2);
+		vDSP_polar(in_real, 2, out_real, 2, fftSizeOver2);
+		cblas_scopy(fftSizeOver2, out_real, 2, magnitude, 1);
+		cblas_scopy(fftSizeOver2, out_real+1, 2, phase, 1);
 	}
 	
 	void inverse(int start, 
@@ -138,11 +145,21 @@ public:
 				 float *phase, 
 				 bool dowindow = true)
 	{
-		float *real_p = split_data.realp, *imag_p = split_data.imagp;
+		/*
+		float	*real_p = split_data.realp, 
+				*imag_p = split_data.imagp;
 		for (i = 0; i < fftSizeOver2; i++) {
 			*real_p++ = magnitude[i] * cosf(phase[i]);
 			*imag_p++ = magnitude[i] * sinf(phase[i]);
 		}
+		*/
+		
+		cblas_scopy(fftSizeOver2, magnitude, 1, in_real, 2);
+		cblas_scopy(fftSizeOver2, phase, 1, in_real+1, 2);
+		vDSP_rect(in_real, 2, out_real, 2, fftSizeOver2);
+		
+		//convert to split complex format with evens in real and odds in imag
+		vDSP_ctoz((COMPLEX *) out_real, 2, &split_data, 1, fftSizeOver2);
 		
 		vDSP_fft_zrip(fftSetup, &split_data, 1, log2n, FFT_INVERSE);
 		vDSP_ztoc(&split_data, 1, (COMPLEX*) out_real, 2, fftSizeOver2);

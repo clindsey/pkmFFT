@@ -38,10 +38,10 @@ const int SAMPLE_RATE = 44100;
 const int FRAME_SIZE = 512;
 const int NUM_BACK_BUFFERS_FOR_FEATURE_ANALYSIS = SAMPLE_RATE*1/FRAME_SIZE;
 const int NUM_FORE_BUFFERS_FOR_FEATURE_ANALYSIS = SAMPLE_RATE*1/FRAME_SIZE;
-const int NUM_BUFFERS_FOR_SEGMENTATION_ANALYSIS = SAMPLE_RATE*5/FRAME_SIZE;
-const int MIN_SEGMENT_LENGTH = SAMPLE_RATE*0.25;
+const int NUM_BUFFERS_FOR_SEGMENTATION_ANALYSIS = SAMPLE_RATE*3/FRAME_SIZE;
+const int MIN_SEGMENT_LENGTH = SAMPLE_RATE*.25;
 const int MAX_SEGMENT_LENGTH = SAMPLE_RATE*4;
-const float SEGMENT_THRESHOLD = 3.5f;
+const float SEGMENT_THRESHOLD = 2.5f;
 
 class pkmSegmenter
 {
@@ -52,15 +52,16 @@ public:
 	pkmSegmenter(bool showDrawing = true)
 	{
 		audioFeature				= new pkmAudioFeatures(SAMPLE_RATE, FRAME_SIZE);
+		numMFCCs					= audioFeature->getNumCoefficients();
 		audioIn						= (float *)malloc(sizeof(float) * FRAME_SIZE);
-		current_feature				= (float *)malloc(sizeof(float) * audioFeature->getNumCoefficients());
+		current_feature				= (float *)malloc(sizeof(float) * numMFCCs);
 		
-		feature_background_buffer	= pkm::Mat(NUM_BACK_BUFFERS_FOR_FEATURE_ANALYSIS, audioFeature->getNumCoefficients());
-		feature_foreground_buffer	= pkm::Mat(NUM_FORE_BUFFERS_FOR_FEATURE_ANALYSIS, audioFeature->getNumCoefficients());
+		feature_background_buffer	= pkm::Mat(NUM_BACK_BUFFERS_FOR_FEATURE_ANALYSIS, numMFCCs);
+		feature_foreground_buffer	= pkm::Mat(NUM_FORE_BUFFERS_FOR_FEATURE_ANALYSIS, numMFCCs);
 		background_distance_buffer	= pkm::Mat(NUM_BUFFERS_FOR_SEGMENTATION_ANALYSIS, 1);
 		foreground_distance_buffer	= pkm::Mat(NUM_BUFFERS_FOR_SEGMENTATION_ANALYSIS, 1);
-		feature_background_average	= pkm::Mat(1, audioFeature->getNumCoefficients());
-		feature_foreground_average	= pkm::Mat(1, audioFeature->getNumCoefficients());
+		feature_background_average	= pkm::Mat(1, numMFCCs);
+		feature_foreground_average	= pkm::Mat(1, numMFCCs);
 		
 		bSegmenting					= false;
 		bSegmented					= false;
@@ -84,7 +85,7 @@ public:
 	
 	void resetBackgroundModel()
 	{
-		feature_background_buffer	= pkm::Mat(NUM_BACK_BUFFERS_FOR_FEATURE_ANALYSIS, audioFeature->getNumCoefficients());
+		feature_background_buffer	= pkm::Mat(NUM_BACK_BUFFERS_FOR_FEATURE_ANALYSIS, numMFCCs);
 	}
 	
 	// given a new frame of audio, did we detect a segment?
@@ -118,7 +119,7 @@ public:
 			if (!bSegmenting && 
 				(fabs(distance - mean_distance) - SEGMENT_THRESHOLD*std_distance) > 0)
 			{
-				pkm::Mat current_feature_mat(1, audioFeature->getNumCoefficients(), current_feature, false);
+				pkm::Mat current_feature_mat(1, numMFCCs, current_feature, false);
 				feature_foreground_buffer = pkm::Mat::repeat(current_feature_mat, NUM_FORE_BUFFERS_FOR_FEATURE_ANALYSIS);
 				foreground_distance_buffer.reset(NUM_FORE_BUFFERS_FOR_FEATURE_ANALYSIS, 1);
 				bSegmenting = true;
@@ -128,7 +129,7 @@ public:
 			else if(bSegmenting && audioSegment->size > MIN_SEGMENT_LENGTH)
 			{
 				// too similar to the original background, no more event
-				if( (fabs(distance - mean_distance) - 0.5f*std_distance) < 0 )
+				if( (fabs(distance - mean_distance) - 0.3f*std_distance) < 0 )
 				{
 					bSegmenting = false;
 					bSegmented = true;
@@ -251,7 +252,7 @@ public:
 		cblas_scopy(buf_size, audioSegment->data, 1, buf, 1);
 		audioSegment->reset();
 		
-		feature_size = audioFeature->getNumCoefficients();
+		feature_size = numMFCCs;
 		features = (float *)malloc(sizeof(float) * feature_size);
 		cblas_scopy(feature_size, feature_foreground_average.data, 1, features, 1);
 		//float rms_feature = pkm::Mat::rms(feature_foreground_average.data, feature_foreground_average.cols);
@@ -278,7 +279,7 @@ public:
 	// update the circular buffer detecting segments each update()
 	void audioReceived(float *&input, int bufferSize, int nChannels)
 	{
-		audioFeature->computeMFCC(input, current_feature);
+		audioFeature->computeMFCC(input, current_feature, numMFCCs);
 		if (bSegmenting) {
 			feature_foreground_buffer.insertRowCircularly(current_feature);
 			audioSegment->insert(input, bufferSize);
@@ -294,6 +295,8 @@ public:
 	pkmAudioFeatures		*audioFeature;
 	float					*audioIn, 
 							*current_feature;
+	
+	int						numMFCCs;
 	
 	pkm::Mat				feature_background_buffer;
 	pkm::Mat				feature_background_average;

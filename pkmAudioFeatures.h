@@ -93,17 +93,17 @@ public:
 		fft_phases = (float *)malloc(sizeof(float) * fftOutN);
 		
 		// low C minus quater tone
-		loEdge = 55.0 * pow(2.0, 2.5/12.0);
-		hiEdge = 8000.0;
+		loEdge = 40.0 * pow(2.0, 2.5/12.0);		//55.0
+		hiEdge = 2000.0;						//8000.0
 		
 		// Constant-Q bandwidth
-		fratio = pow(2.0, 1.0/12.0);				
+		fratio = pow(2.0, 1.0/(float)bpoN);				
 		cqtN = (int) floor(log(hiEdge/loEdge)/log(fratio));
 		
 		if(cqtN<1)
 			printf("warning: cqtN not positive definite\n");
 		
-		// The transformation matrix
+		// The transformation matrix (mel filters)
 		CQT = (float *)malloc(sizeof(float)*cqtN*fftOutN);			
 		
 		// Sparse matrix coding indices
@@ -114,7 +114,7 @@ public:
 		dctN = cqtN; 
 		DCT = (float *)malloc(sizeof(float)*cqtN*dctN);
 		
-		// Our transforms
+		// Our transforms (mel bands)
 		cqtVector = (float *)malloc(sizeof(float)*cqtN);	
 		dctVector = (float *)malloc(sizeof(float)*dctN);	
 		
@@ -202,6 +202,7 @@ public:
 	
 	void createDCT()
 	{
+
 		int i,j;
 		float nm = 1 / sqrtf( cqtN / 2.0 );
 
@@ -212,9 +213,10 @@ public:
 				DCT[ i * cqtN + j ] = nm * cosf( i * (2.0 * j + 1) * M_PI / 2.0 / (float)cqtN );
 		for ( j = 0 ; j < cqtN ; j++ )
 			DCT[ j ] *= sqrtf(2.0) / 2.0;
+		
 	}
 	
-	void computeMFCC(float *input, float*& output)
+	void computeMFCC(float *input, float*& output, int numMFCCS = -1)
 	{
 		
 		// should window input buffer before FFT
@@ -245,7 +247,8 @@ public:
 		a = cqtN;
 		ptr1 = cqtVector;
 		while( a-- ){
-			*ptr1++ = log10f( *ptr1 );
+			float f = *ptr1;
+			*ptr1++ = log10f( f*f );
 		}
 		
 		/*
@@ -263,13 +266,32 @@ public:
 		}
 		*/
 		
-		vDSP_mmul(cqtVector, 1, DCT, 1, output, 1, 1, dctN, cqtN);
+		if (numMFCCS == -1) {
+			vDSP_mmul(cqtVector, 1, DCT, 1, output, 1, 1, dctN, cqtN);
+			
+			float n = dctN;
+			vDSP_vsdiv(output, 1, &n, output, 1, dctN);
+			
+			//float rms_feature = pkm::Mat::rms(output, cqtN);
+			//output[1] = expf(rms_feature);
+		}
+		else {
+			vDSP_mmul(cqtVector, 1, DCT, 1, foutput, 1, 1, dctN, cqtN);
+			cblas_scopy(numMFCCS, foutput, 1, output, 1);
+			
+			float n = dctN;
+			vDSP_vsdiv(output, 1, &n, output, 1, numMFCCS);
+			
+			//float rms_feature = pkm::Mat::rms(output, cqtN);
+			//output[1] = expf(rms_feature);
+		}
+
 		//float n = (float) dctN;
 		//vDSP_vsdiv(output, 1, &n, output, 1, dctN);
 		 
 	}
 	
-	void computeMFCC(float *input, double*& output)
+	void computeMFCC(float *input, double*& output, int numMFCCS = -1)
 	{
 		
 		// should window input buffer before FFT
@@ -286,11 +308,28 @@ public:
 		a = cqtN;
 		ptr1 = cqtVector;
 		while( a-- ){
-			*ptr1++ = log10f( *ptr1 );
+			float f = *ptr1;
+			*ptr1++ = log10f( f*f );
 		}
 		
 		vDSP_mmul(cqtVector, 1, DCT, 1, foutput, 1, 1, dctN, cqtN);
-		vDSP_vspdp(foutput, 1, output, 1, dctN);
+		if (numMFCCS == -1) {
+			vDSP_vspdp(foutput, 1, output, 1, dctN);
+			
+			double n = dctN;
+			vDSP_vsdivD(output, 1, &n, output, 1, dctN);
+			//double rms_feature = pkm::Mat::rms(output, cqtN);
+			//output[1] = expf(rms_feature);
+		}
+		else {
+			vDSP_vspdp(foutput, 1, output, 1, numMFCCS);
+			
+			double n = dctN;
+			vDSP_vsdivD(output, 1, &n, output, 1, numMFCCS);
+			//double rms_feature = pkm::Mat::rms(output, cqtN);
+			//output[1] = expf(rms_feature);
+		}
+
 	}
 	
 	inline int getNumCoefficients()
